@@ -1,0 +1,5 @@
+t		time
+f		freq
+Acc		acceleration
+Gyro		velocity
+Mag		magnitude

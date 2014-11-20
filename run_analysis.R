@@ -20,6 +20,8 @@ read_merge_datasets <- function()
     names(X_merged) <-  features$name
     
     merged          <<- cbind(subject_merged, y_merged, X_merged)
+
+    renames         <<- read.table("rename_features.txt", col.names=c("old", "new"))
 }
 
 extract_mean_std <- function()
@@ -41,12 +43,45 @@ pretty_name_variables <- function()
 {
     pretty_name_variable <- function(name)
     {
-        #gsub("mean", "XXX", name)
-        # TODO clever rename
-        name
+        n2<-gsub("BodyBody", "Body", name)
+
+        matches<-regexec("^([ft])([A-Z][a-z]+)([A-Z][a-z]+)([A-Z][a-z]+)?([A-Z][a-z]+)?-(mean|std)\\(\\)(-X|-Y|-Z)?$", n2)
+        parts<<-unlist(regmatches(n2,matches))[2:8]
+        res <- NA
+        for (i in 1:length(parts))
+        {
+            part <- parts[i]
+            if (part != "" && part != "()")
+            {
+                rename = renames[renames$old==part, "new"]
+                if (length(rename) == 0)
+                {
+                    if (i==length(parts))
+                    {
+                        rename <- substr(part, 2, 2)
+                    }
+                    else
+                    {
+                        rename <- tolower(part)
+                    }
+                }
+                if (is.na(res))
+                {
+                    res = rename
+                }
+                else
+                {
+                    res <- paste(res, rename, sep="-")    
+                }
+            }
+        }
+        res
     }
     
-    names(mean_std) <- sapply(names(mean_std), pretty_name_variable)
+    # Rename all but the first 3 columns. Create better names here.
+    pretty_names <- sapply(names(mean_std)[4:ncol(mean_std)], pretty_name_variable)
+    # Apply them
+    names(mean_std) <<- c(names(mean_std)[1:3], pretty_names)
 }
 
 # You should create one R script called run_analysis.R that does the following. 
@@ -59,8 +94,7 @@ run_analysis<-function()
     extract_mean_std()
     
     # Uses descriptive activity names to name the activities in the data set
-    pretty_name_activities()
-    
+    pretty_name_activities()    
     # Appropriately labels the data set with descriptive variable names. 
     pretty_name_variables()
     
