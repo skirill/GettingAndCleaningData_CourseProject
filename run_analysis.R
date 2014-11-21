@@ -1,17 +1,21 @@
 read_merge_datasets <- function()
 {
+    # set to -1 to read all data
+    nr <- -1
+    #nr <- 10
+    
     archive         <-  "getdata_projectfiles_UCI HAR Dataset.zip"
     
     features        <<- read.table(unz(archive, "UCI HAR Dataset/features.txt"), col.names=c("num", "name"))
     activities      <<- read.table(unz(archive, "UCI HAR Dataset/activity_labels.txt"), col.names=c("num", "name"))
     
-    X_train         <-  read.table(unz(archive, "UCI HAR Dataset/train/X_train.txt"), nrows=10)
-    y_train         <-  read.table(unz(archive, "UCI HAR Dataset/train/y_train.txt"), col.names="activity", nrows=10)
-    subject_train   <-  read.table(unz(archive, "UCI HAR Dataset/train/subject_train.txt"), col.names="subject", nrows=10)
+    X_train         <-  read.table(unz(archive, "UCI HAR Dataset/train/X_train.txt"), nrows=nr)
+    y_train         <-  read.table(unz(archive, "UCI HAR Dataset/train/y_train.txt"), col.names="activity", nrows=nr)
+    subject_train   <-  read.table(unz(archive, "UCI HAR Dataset/train/subject_train.txt"), col.names="subject", nrows=nr)
     
-    X_test          <-  read.table(unz(archive, "UCI HAR Dataset/test/X_test.txt"), nrows=10)
-    y_test          <-  read.table(unz(archive, "UCI HAR Dataset/test/y_test.txt"), col.names="activity", nrows=10)
-    subject_test    <-  read.table(unz(archive, "UCI HAR Dataset/test/subject_test.txt"), col.names="subject", nrows=10)
+    X_test          <-  read.table(unz(archive, "UCI HAR Dataset/test/X_test.txt"), nrows=nr)
+    y_test          <-  read.table(unz(archive, "UCI HAR Dataset/test/y_test.txt"), col.names="activity", nrows=nr)
+    subject_test    <-  read.table(unz(archive, "UCI HAR Dataset/test/subject_test.txt"), col.names="subject", nrows=nr)
     
     X_merged        <-  rbind(X_train, X_test)
     y_merged        <-  rbind(y_train, y_test)
@@ -84,6 +88,35 @@ pretty_name_variables <- function()
     names(mean_std) <<- c(names(mean_std)[1:3], pretty_names)
 }
 
+create_tidy_dataset<-function()
+{
+    # start with an empty dataframe with same columns as mean_std
+    res <- mean_std[0,]
+    
+    subjs<-sort(unique(mean_std$subject))
+    acts<-sort(unique(mean_std$activity))
+    
+    for (subj in subjs)
+    {
+        for (act in acts)
+        {
+            # create next row by taking one row of mean_std (no matter which one) and replacing data there with whet we want
+            row <- mean_std[1,]
+            row$subject[1]<-subj
+            row$activity[1]<-act
+            row$activityname[1]<-activities[activities$num==act,"name"]
+            
+            row[1,4:ncol(mean_std)] <- colMeans(mean_std[mean_std$subject==subj & mean_std$activity==act,4:ncol(mean_std)])
+            
+            # append data to net result
+            res <- rbind(res, row)
+        }
+    }
+    
+    # publish net result to global namespace
+    mean_std_avg <<- res
+}
+
 # You should create one R script called run_analysis.R that does the following. 
 run_analysis<-function()
 {
@@ -100,4 +133,10 @@ run_analysis<-function()
     
     # From the data set in step 4, creates a second, independent tidy data set with the average
     # of each variable for each activity and each subject.
+    create_tidy_dataset()
+    
+    # Please upload the tidy data set created in step 5 of the instructions. Please upload your
+    # data set as a txt file created with write.table() using row.name=FALSE (do not cut and paste
+    # a dataset directly into the text box, as this may cause errors saving your submission).
+    write.table(mean_std_avg, file = "tidy_dataset.txt", sep="\t", row.names=F)
 }
